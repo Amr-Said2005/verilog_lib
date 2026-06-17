@@ -8,13 +8,14 @@ A general-purpose, layered library of synthesizable Verilog-2005 modules. Every 
 
 The library is built and verified **section by section** — a module is only marked ✅ once it has passed a full self-checking verification suite against an independent reference model.
 
-**Four sections complete — Arithmetic, Control, Datapath, and Memory — all fully verified.** The remaining sections are in active development.
+**Five sections complete — Arithmetic, Control, Datapath, Memory, and FSMs — all fully verified.** The remaining sections are in active development.
 
 > **Arithmetic:** 6 / 6 modules verified · 1,717,077 self-checking comparisons · 0 failures
 > **Control:** 12 / 12 modules verified · all self-checking testbenches PASS · 0 failures
 > **Datapath:** 6 / 6 modules verified · 8,552 exhaustive comparisons · 0 failures
 > **Memory:** 16 / 16 modules verified · all self-checking testbenches PASS · 0 failures
-> Simulator: ModelSim – Intel FPGA Edition 10.5b
+> **FSMs:** 5 / 5 modules verified · 9,826 self-checking comparisons · 0 failures
+> Simulator: ModelSim – Intel FPGA Edition 10.5b (Arithmetic, Control, Datapath, Memory) · Icarus Verilog 12.0 (FSMs)
 
 ---
 
@@ -26,10 +27,10 @@ The library is built and verified **section by section** — a module is only ma
 | **Control** | UpCounter, DownCounter, UpDownCounter, BCDCounter, GrayCounter, JohnsonCounter, LFSR, ModNCounter, PWMCounter, RingCounter, RippleCounter, Timer | ✅ **Complete & verified** |
 | **Datapath** | Decoder, Demultiplexer, Encoder, PriorityEncoder, BarrelShifter, Multiplexer | ✅ **Complete & verified** |
 | **Memory** | DFlipFlop, JKFlipFlop, TFlipFlop, SRFlipFlop, DLatch, SRLatch, Register, ShiftRegisterSISO/SIPO/PISO/PIPO/Universal, RAMSinglePort, RAMDualPort, ROM, FIFO | ✅ **Complete & verified** |
-| **FSMs** | MealyFSM, MooreFSM, SequenceDetector, TrafficLightController, VendingMachineController | 🚧 In progress |
+| **FSMs** | MealyFSM, MooreFSM, SequenceDetector, TrafficLightController, VendingMachineController | ✅ **Complete & verified** |
 | Communication | UART, SPI, I²C | 🚧 Planned |
 
-All four completed sections carry verification results below. In-progress sections will be documented and verified to the same standard before being marked complete.
+All five completed sections carry verification results below. In-progress sections will be documented and verified to the same standard before being marked complete.
 
 ---
 
@@ -211,6 +212,23 @@ All 16 design modules were correct — no design bugs found. Three of the pre-wr
 
 ---
 
+## FSM section — verification summary
+
+The FSM section covers five finite state machines: Mealy and Moore "101" sequence detectors, a parameterized overlapping sequence detector, a two-road traffic light controller, and a coin-operated vending machine controller. Each testbench drives the DUT against an **independent reference model** structurally different from the design under test, with strict (`!==`) comparison and asynchronous-reset checks. The detectors are checked against an array-recorded input history (not a copy of the DUT's state machine); the traffic light against a modular cycle-counter phase model plus per-cycle safety invariants (each road shows exactly one valid Red/Yellow/Green code, and the two roads are never simultaneously non-red); the vending machine against an independent integer credit accumulator.
+
+| Module | Type | Verification method | Key properties checked | Result |
+|---|---|---|---|:---:|
+| MealyFSM | Mealy "101" detector | History-array reference + 2,000 random bits | Combinational output timing, overlap, async reset | ✅ PASS |
+| MooreFSM | Moore "101" detector | History-array reference + 2,000 random bits | Registered output latency, overlap, async reset | ✅ PASS |
+| SequenceDetector | Parameterized detector | History-array reference, two configs (1011, 101) | PATTERN/LEN parameterization, overlap, async reset | ✅ PASS |
+| TrafficLightController | Moore controller | Modular phase model + safety invariants | Phase timing, sensor early-end, safety, async reset | ✅ PASS |
+| VendingMachineController | Moore controller | Credit-accumulator scoreboard + 600 random coins | Dispense/change pulses, overpay, dime priority, reset | ✅ PASS |
+| **Total** | — | — | **9,826 self-checking comparisons** | ✅ PASS |
+
+All five designs verified clean. One verification-side issue surfaced and was fixed: the traffic-light sensor test initially deasserted the `sensor` input in the same time-step as the sampling clock edge, letting the DUT's clocked block race the stimulus and read the already-cleared value. The design was correct — the fix was to drive all stimulus on the negedge so inputs are stable across each posedge, the same scheduling discipline that resolved the RippleCounter race in the control section. This section was verified with Icarus Verilog 12.0 (`iverilog -g2005`).
+
+---
+
 ## Verification methodology
 
 Every completed module uses the same self-checking philosophy: for each stimulus the testbench computes the expected output from an **independent reference model** (written separately from the design under test), then compares it against the DUT using a **strict (`!==`) comparison**. The strict operator also flags any unknown (`X`) or high-impedance (`Z`) value, so an uninitialized or floating output cannot silently pass. Only mismatches are printed; a running pass/fail tally is reported at completion.
@@ -280,7 +298,7 @@ verilog_lib/
 ├── control/            # ✅ complete & verified (12 modules + 12 testbenches)
 ├── datapath/           # ✅ complete & verified (6 modules + 6 testbenches)
 ├── memory/             # ✅ complete & verified (16 modules + 16 testbenches)
-├── fsm/                # 🚧 in progress (5 modules — MealyFSM implemented)
+├── fsm/                # ✅ complete & verified (5 modules + 5 testbenches)
 ├── communication/      # 🚧 planned
 ├── LICENSE             # MIT
 └── README.md
@@ -318,6 +336,14 @@ vsim -c <module>_tb -do "run -all; quit"
 
 All datapath modules are self-contained with no external dependencies.
 
+**ModelSim / Questa (FSM):**
+```bash
+vlog fsm/<module>.v fsm/<module>_tb.v
+vsim -c <module>_tb -do "run -all; quit"
+```
+
+All FSM modules are self-contained with no external dependencies. This section's verification runs were executed with Icarus Verilog 12.0 (see the Icarus command below).
+
 **Icarus Verilog (open-source alternative):**
 ```bash
 iverilog -g2001 -o sim <section>/<module>.v <section>/<module>_tb.v
@@ -334,7 +360,7 @@ Each testbench prints only mismatches and ends with a pass/fail tally.
 - [x] **Control** — 12 parameterized counters and timers (verified)
 - [x] **Datapath** — decoder, demultiplexer, encoder, priority encoder, barrel shifter, multiplexer (verified)
 - [x] **Memory** — flip-flops, latches, register, shift registers, RAM, ROM, FIFO (verified)
-- [ ] **FSMs** — Mealy/Moore templates, sequence detector, traffic light controller, vending machine controller
+- [x] **FSMs** — Mealy/Moore "101" detectors, parameterized sequence detector, traffic light controller, vending machine controller (verified)
 - [ ] **Communication** — UART, SPI, I²C
 - [ ] **Composite modules** — multi-block designs assembled from verified primitives
 - [ ] **SystemVerilog rebuild** — class-based testbenches, constrained-random stimulus, functional coverage, and SVA assertions
