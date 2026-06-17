@@ -1,6 +1,12 @@
 # Verilog HDL Library
 
-A personal, growing library of synthesizable Verilog modules, each shipped with an independent, self-checking testbench. The library is being built and verified **section by section**, a module is only marked ✅ once it has passed a full self-checking verification suite against an independent reference model.
+A general-purpose, layered library of synthesizable Verilog-2005 modules. Every module ships with an independent, self-checking testbench. The architecture is designed in three tiers:
+
+1. **Primitives** — small, parameterized building blocks (flip-flops, counters, ALUs, muxes, etc.)
+2. **Composite modules** — mid-level designs assembled from primitives (shift registers, FSMs, datapaths)
+3. **Top-level modules** — application-ready systems built from composites (UARTs, SPI controllers, processors)
+
+The library is built and verified **section by section** — a module is only marked ✅ once it has passed a full self-checking verification suite against an independent reference model.
 
 **Four sections complete — Arithmetic, Control, Datapath, and Memory — all fully verified.** The remaining sections are in active development.
 
@@ -20,9 +26,8 @@ A personal, growing library of synthesizable Verilog modules, each shipped with 
 | **Control** | UpCounter, DownCounter, UpDownCounter, BCDCounter, GrayCounter, JohnsonCounter, LFSR, ModNCounter, PWMCounter, RingCounter, RippleCounter, Timer | ✅ **Complete & verified** |
 | **Datapath** | Decoder, Demultiplexer, Encoder, PriorityEncoder, BarrelShifter, Multiplexer | ✅ **Complete & verified** |
 | **Memory** | DFlipFlop, JKFlipFlop, TFlipFlop, SRFlipFlop, DLatch, SRLatch, Register, ShiftRegisterSISO/SIPO/PISO/PIPO/Universal, RAMSinglePort, RAMDualPort, ROM, FIFO | ✅ **Complete & verified** |
-| Communication | UART, SPI, I²C | 🚧 In development |
-| Finite state machines | Pattern/sequence FSMs, control units | 🚧 Planned |
-| Capstone | RV32I RISC-V core (assembled from the blocks above) | 🚧 Planned |
+| **FSMs** | MealyFSM, MooreFSM, SequenceDetector, TrafficLightController, VendingMachineController | 🚧 In progress |
+| Communication | UART, SPI, I²C | 🚧 Planned |
 
 All four completed sections carry verification results below. In-progress sections will be documented and verified to the same standard before being marked complete.
 
@@ -275,7 +280,9 @@ verilog_lib/
 ├── control/            # ✅ complete & verified (12 modules + 12 testbenches)
 ├── datapath/           # ✅ complete & verified (6 modules + 6 testbenches)
 ├── memory/             # ✅ complete & verified (16 modules + 16 testbenches)
-├── communication/      # 🚧 in development
+├── fsm/                # 🚧 in progress (5 modules — MealyFSM implemented)
+├── communication/      # 🚧 planned
+├── LICENSE             # MIT
 └── README.md
 ```
 
@@ -327,13 +334,13 @@ Each testbench prints only mismatches and ends with a pass/fail tally.
 - [x] **Control** — 12 parameterized counters and timers (verified)
 - [x] **Datapath** — decoder, demultiplexer, encoder, priority encoder, barrel shifter, multiplexer (verified)
 - [x] **Memory** — flip-flops, latches, register, shift registers, RAM, ROM, FIFO (verified)
+- [ ] **FSMs** — Mealy/Moore templates, sequence detector, traffic light controller, vending machine controller
 - [ ] **Communication** — UART, SPI, I²C
-- [ ] **FSMs** — sequence detectors, control units
+- [ ] **Composite modules** — multi-block designs assembled from verified primitives
 - [ ] **SystemVerilog rebuild** — class-based testbenches, constrained-random stimulus, functional coverage, and SVA assertions
-- [ ] **Capstone** — RV32I RISC-V core assembled from the library blocks
 
-Each new section will be held to the same self-checking standard before being marked complete.
+Each new section will be held to the same self-checking standard before being marked complete. The library is open-ended — new primitive and composite sections will be added as needed.
 
 ---
 
-*Author: Amr Said · Verified with ModelSim – Intel FPGA Edition 10.5b · Verilog-2001*
+*Author: Amr Said · MIT License · Verified with ModelSim – Intel FPGA Edition 10.5b · Verilog-2005*
