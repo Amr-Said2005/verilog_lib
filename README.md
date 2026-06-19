@@ -8,14 +8,15 @@ A general-purpose, layered library of synthesizable Verilog-2005 modules. Every 
 
 The library is built and verified **section by section** — a module is only marked ✅ once it has passed a full self-checking verification suite against an independent reference model.
 
-**Five sections complete — Arithmetic, Control, Datapath, Memory, and FSMs — all fully verified.** The remaining sections are in active development.
+**Five sections complete — Arithmetic, Control, Datapath, Memory, and FSMs — all fully verified.** The first top-level application — a DE10-Standard digital clock — is complete and verified as well. The remaining sections are in active development.
 
 > **Arithmetic:** 6 / 6 modules verified · 1,717,077 self-checking comparisons · 0 failures
 > **Control:** 12 / 12 modules verified · all self-checking testbenches PASS · 0 failures
 > **Datapath:** 6 / 6 modules verified · 8,552 exhaustive comparisons · 0 failures
 > **Memory:** 16 / 16 modules verified · all self-checking testbenches PASS · 0 failures
 > **FSMs:** 5 / 5 modules verified · 9,826 self-checking comparisons · 0 failures
-> Simulator: ModelSim – Intel FPGA Edition 10.5b (Arithmetic, Control, Datapath, Memory) · Icarus Verilog 12.0 (FSMs)
+> **Top-level (DigitalClock):** 6 / 6 modules verified · 292,842 self-checking comparisons · 0 failures
+> Simulator: ModelSim – Intel FPGA Edition 10.5b (Arithmetic, Control, Datapath, Memory) · Icarus Verilog 12.0 (FSMs, Top-level)
 
 ---
 
@@ -28,9 +29,10 @@ The library is built and verified **section by section** — a module is only ma
 | **Datapath** | Decoder, Demultiplexer, Encoder, PriorityEncoder, BarrelShifter, Multiplexer | ✅ **Complete & verified** |
 | **Memory** | DFlipFlop, JKFlipFlop, TFlipFlop, SRFlipFlop, DLatch, SRLatch, Register, ShiftRegisterSISO/SIPO/PISO/PIPO/Universal, RAMSinglePort, RAMDualPort, ROM, FIFO | ✅ **Complete & verified** |
 | **FSMs** | MealyFSM, MooreFSM, SequenceDetector, TrafficLightController, VendingMachineController | ✅ **Complete & verified** |
+| **Top-level** | DigitalClock — DE10-Standard HH:MM:SS clock (divider, counter, display, mode FSM) | ✅ **Complete & verified** |
 | Communication | UART, SPI, I²C | 🚧 Planned |
 
-All five completed sections carry verification results below. In-progress sections will be documented and verified to the same standard before being marked complete.
+All five completed sections and the first top-level application carry verification results below. In-progress sections will be documented and verified to the same standard before being marked complete.
 
 ---
 
@@ -229,6 +231,24 @@ All five designs verified clean. One verification-side issue surfaced and was fi
 
 ---
 
+## Top-level application: DigitalClock — verification summary
+
+The first top-level (application-ready) design: a 24-hour HH:MM:SS digital clock for the DE10-Standard board. A `ClockDivider` derives a per-second tick from the 50 MHz oscillator, a `TimeCounter` keeps the time, a `ClockDisplay` drives the six common-anode 7-segment HEX displays, and a `MachineFSM` selects a machine operating mode (IDLE / STARTING / WORKING) from the hour. Every module has an independent self-checking testbench; the top is parameterized (`DIV`) so the divider can be shrunk for simulation, and an integration testbench checks the assembled chain against independent reference models.
+
+| Module | Role | Verification method | Result |
+|---|---|---|:---:|
+| ClockDivider | ÷N tick generator | (cycles / DIVISOR) mod 2 reference, two ratios | ✅ PASS |
+| TimeCounter | HH:MM:SS counter | Full 24 h sweep vs modular elapsed-seconds reference | ✅ PASS |
+| MachineFSM | Hour → mode FSM | Independent zone(Hours) reference, all hours + resets | ✅ PASS |
+| SevenSegDecoder | Hex → 7-segment | Exhaustive (16) vs independent lit-segment table | ✅ PASS |
+| ClockDisplay | HH:MM:SS formatter | Per-field sweep + random vs lit-segment reference | ✅ PASS |
+| DigitalClockTop | Full integration | Mirror-divider + time + decode reference (all 6 HEX + state) | ✅ PASS |
+| **Total** | — | **292,842 self-checking comparisons** | ✅ PASS |
+
+This design is board-specific (DE10-Standard common-anode HEX displays); the RTL is unchanged from the original — the integration pass added standard headers and a simulation-only divider override (`DIV`), nothing more. Verified with Icarus Verilog 12.0 (`iverilog -g2005`).
+
+---
+
 ## Verification methodology
 
 Every completed module uses the same self-checking philosophy: for each stimulus the testbench computes the expected output from an **independent reference model** (written separately from the design under test), then compares it against the DUT using a **strict (`!==`) comparison**. The strict operator also flags any unknown (`X`) or high-impedance (`Z`) value, so an uninitialized or floating output cannot silently pass. Only mismatches are printed; a running pass/fail tally is reported at completion.
@@ -299,6 +319,8 @@ verilog_lib/
 ├── datapath/           # ✅ complete & verified (6 modules + 6 testbenches)
 ├── memory/             # ✅ complete & verified (16 modules + 16 testbenches)
 ├── fsm/                # ✅ complete & verified (5 modules + 5 testbenches)
+├── toplevel/           # ✅ application-ready designs
+│   └── DigitalClock/   #    DE10-Standard clock (6 modules + 6 testbenches)
 ├── communication/      # 🚧 planned
 ├── LICENSE             # MIT
 └── README.md
@@ -361,6 +383,7 @@ Each testbench prints only mismatches and ends with a pass/fail tally.
 - [x] **Datapath** — decoder, demultiplexer, encoder, priority encoder, barrel shifter, multiplexer (verified)
 - [x] **Memory** — flip-flops, latches, register, shift registers, RAM, ROM, FIFO (verified)
 - [x] **FSMs** — Mealy/Moore "101" detectors, parameterized sequence detector, traffic light controller, vending machine controller (verified)
+- [x] **Top-level applications** — DigitalClock: DE10-Standard HH:MM:SS clock with mode FSM (verified)
 - [ ] **Communication** — UART, SPI, I²C
 - [ ] **Composite modules** — multi-block designs assembled from verified primitives
 - [ ] **SystemVerilog rebuild** — class-based testbenches, constrained-random stimulus, functional coverage, and SVA assertions
